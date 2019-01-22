@@ -92,3 +92,12 @@ void MainWindow::displaySettings()
     ui->label_PressToSelect->setText(press_to_selectFile.readAll());
     press_to_selectFile.close();
 }
+
+void MainWindow::on_button_Defaults_clicked()
+{
+    applySettings(settingPath + "/speed", "97");
+    applySettings(settingPath + "/sensitivity", "128");
+    applySettings(settingPath + "/press_to_select", "0");
+
+    displaySettings();
+}

@@ -29,6 +29,8 @@ public:
 private slots:
     void on_button_Apply_clicked();
 
+    void on_button_Defaults_clicked();
+
 private:
     Ui::MainWindow *ui;
     QString settingPath;
