@@ -8,6 +8,9 @@
 #include <QMessageBox>
 #include <QDebug>
 #include <QMessageBox>
+#include <QProcess>
+
+#include <unistd.h>  // For "getuid" and "geteuid"
 
 namespace Ui {
 class MainWindow;
@@ -25,11 +28,18 @@ public:
     void validateSettings();
     void displaySettings();
     void origionalFunction();
+    void installTrackpointSH();
+    void installTrackpointService();
+    void installTrackpointTimer();
+    void setPersistPaths();
+    void checkUser();
 
 private slots:
     void on_button_Apply_clicked();
 
     void on_button_Defaults_clicked();
+
+    void on_check_Persist_clicked();
 
 private:
     Ui::MainWindow *ui;
@@ -37,6 +47,9 @@ private:
     QString speedPath;
     QString sensativityPath;
     QString press_to_selectPath;
+    QString trackpointSHPath;
+    QString initPath;
+    QString initCommand;
 };
 
 #endif // MAINWINDOW_H
