@@ -59,8 +59,10 @@ void MainWindow::setSettingsPath()
         settingPath = "/tmp/pkf_trackpoint";
     else if (QFile::exists("/sys/devices/platform/i8042/serio1/serio2/speed"))  // If trackpad exists
         settingPath = "/sys/devices/platform/i8042/serio1/serio2";
-    else if (QFile::exists("/sys/devices/platform/i8042/serio1/speed"))  // if trackpad does not exist
+    else if (QFile::exists("/sys/devices/platform/i8042/serio1/speed"))  // If trackpad does not exist
         settingPath = "/sys/devices/platform/i8042/serio1";
+    else if (QFile::exists("/sys/devices/rmi4-00/rmi4-00.fn03/serio2/speed"))  // If disto uses less common device directory (suc has KDE Neon)
+        settingPath = "/sys/devices/rmi4-00/rmi4-00.fn03/serio2";
     else
     {
         QMessageBox::critical(this, "Alert", "No TrackPoint detected!");
@@ -196,6 +198,9 @@ void MainWindow::installTrackpointSH()
     stream << "elif [ -f /sys/devices/platform/i8042/serio1/sensitivity ];\n";
     stream << "then\n";
     stream << "  vTrackpointPath=/sys/devices/platform/i8042/serio1\n";
+    stream << "elif [ -f /sys/devices/rmi4-00/rmi4-00.fn03/serio2/sensitivity ];\n";
+    stream << "then\n";
+    stream << "  vTrackpointPath=/sys/devices/rmi4-00/rmi4-00.fn03/serio2\n";
     stream << "else\n";
     stream << "  echo \"Trackpoint not detected\"\n";
     stream << "  exit 200\n";
@@ -231,7 +236,8 @@ void MainWindow::installTrackpointService()
     stream << "Description=Trackpoint Configuration for systemd\n";
     stream << "## Only using \"sensitivity\" file as also using \"speed\" and \"press_to_select\" would be redundant\n";
     stream << "ConditionPathExists=|/sys/devices/platform/i8042/serio1/serio2/sensitivity\n";
-    stream << "ConditionPathExists=|/sys/devices/platform/i8042/serio1/sensitivity\n\n";
+    stream << "ConditionPathExists=|/sys/devices/platform/i8042/serio1/sensitivity\n";
+    stream << "ConditionPathExists=|/sys/devices/rmi4-00/rmi4-00.fn03/serio2/sensitivity\n\n";
     stream << "[Service]\n";
     stream << "Type=oneshot\n";
     stream << "RemainAfterExit=yes\n";

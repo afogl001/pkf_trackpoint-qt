@@ -2,7 +2,7 @@
 Qt application for configuring a TrackPoint
 
 ## Description
-This program will allows you to change the speed, sensitivity, and press_to_select settings the TrackPoint on ThinkPads running GNU/Linux ***(See "Limitations" below)***.  
+This program will allows you to change the speed, sensitivity, and press_to_select settings of the TrackPoint on ThinkPads running GNU/Linux ***(See "Limitations" below)*** .  
 
 ## Usage
 ### Modes
