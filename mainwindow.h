@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include <QFile>
+#include <QDir>
 #include <QIODevice>
 #include <QTextStream>
 #include <QMessageBox>
@@ -32,7 +33,8 @@ public:
     void installTrackpointService();
     void installTrackpointTimer();
     void setPersistPaths();
-    void checkUser();
+    void checkMode();
+    void setTestMode(int testMode);
 
 private slots:
     void on_button_Apply_clicked();
@@ -41,15 +43,16 @@ private slots:
 
     void on_check_Persist_clicked();
 
+    void on_actionToggle_Test_Mode_triggered();
+
 private:
     Ui::MainWindow *ui;
     QString settingPath;
-    QString speedPath;
-    QString sensativityPath;
-    QString press_to_selectPath;
     QString trackpointSHPath;
     QString initPath;
     QString initCommand;
+    QString testPath;
+    int testStatus;
 };
 
 #endif // MAINWINDOW_H
