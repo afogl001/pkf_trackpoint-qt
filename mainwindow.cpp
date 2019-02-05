@@ -9,38 +9,91 @@ MainWindow::MainWindow(QWidget *parent) :
 
     setSettingsPath();
     setPersistPaths();
-    checkUser();
+    checkMode();
     validateSettings();
     displaySettings();
-
-    if (QFile::exists(trackpointSHPath + "/trackpoint.sh"))
-        ui->check_Persist->setChecked(1);
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
+    setTestMode(3);
 }
 
-void MainWindow::checkUser()
+void MainWindow::checkMode()
 {
-        auto user = getuid();
         auto effectiveUser = geteuid();
-        qDebug() << "Actual User = " << user;
-        qDebug() << "Effective User = " << effectiveUser;
 
-        if (effectiveUser == 0)
+        if (effectiveUser == 0 && testStatus!=1) {
             initCommand = "systemctl";
+            ui->label_Info->setText("");
+        }
+        else if (testStatus==1) {
+            initCommand = "echo systemctl";
+            ui->label_Info->setText("Running in \"Test\" Mode");
+        }
         else {
             initCommand = "echo systemctl";
-            ui->label_Info->setText("Running in \"ReadOnly\" or \"Test\" Mode:  Run with \"sudo\" or as root to change to TrackPoint settings");
+            ui->label_Info->setText("Running in \"ReadOnly\" Mode:  Run with \"sudo\" or as root to change to TrackPoint settings");
         }
+        qDebug() << "Effective User = " << effectiveUser;
+        qDebug() << "initCommand = " << initCommand;
+}
+
+void MainWindow::setTestMode(int testMode)
+{
+    testStatus=testMode;
+    qDebug() << "Setting \"Test Mode\" to" << testMode;
+    testPath = "/tmp/pkf_trackpoint";
+    QDir dir(testPath);
+    if (testMode==1) {
+        qDebug() << "Test path = " << testPath;
+        dir.mkdir(testPath);
+
+        QFile testSpeed(testPath + "/speed");
+        testSpeed.open(QIODevice::WriteOnly | QIODevice::Truncate);
+        QTextStream streamSpeed(&testSpeed);
+        streamSpeed << "Test";
+        testSpeed.close();
+
+        QFile testSensitivity(testPath + "/sensitivity");
+        testSensitivity.open(QIODevice::WriteOnly | QIODevice::Truncate);
+        QTextStream streamSensitivity(&testSensitivity);
+        streamSensitivity << "Test";
+        testSensitivity.close();
+
+        QFile testPress_to_select(testPath + "/press_to_select");
+        testPress_to_select.open(QIODevice::WriteOnly | QIODevice::Truncate);
+        QTextStream streamPress_to_select(&testPress_to_select);
+        streamPress_to_select << "Test";
+        testPress_to_select.close();
+
+        setSettingsPath();
+        setPersistPaths();
+        displaySettings();
+        checkMode();
+    }
+    else if (testMode==0) {
+        qDebug() << "Removong " << testPath;
+        dir.removeRecursively();
+
+        setSettingsPath();
+        setPersistPaths();
+        displaySettings();
+        checkMode();
+    }
+    else if (testMode==3) {
+        qDebug() << "Removong " << testPath << " if it exists";
+        dir.removeRecursively();
+    }
+    else
+        qDebug() << "Use options 1-3 for setting Test Mode";
 }
 
 void MainWindow::on_button_Apply_clicked()
 {
     applySettings(settingPath + "/speed", ui->edit_Speed->text());
-    applySettings(settingPath + "/sensitivity", ui->edit_Sensativity->text());
+    applySettings(settingPath + "/sensitivity", ui->edit_Sensitivity->text());
     applySettings(settingPath + "/press_to_select", ui->edit_Press_To_Select->text());
 
     displaySettings();
@@ -49,18 +102,20 @@ void MainWindow::on_button_Apply_clicked()
         installTrackpointSH();
 
     ui->edit_Speed->clear();
-    ui->edit_Sensativity->clear();
+    ui->edit_Sensitivity->clear();
     ui->edit_Press_To_Select->clear();
 }
 
 void MainWindow::setSettingsPath()
 {
-    if (QFile::exists("/tmp/pkf_trackpoint/speed") && geteuid()!=0)  // Make directory "/tmp/pkf_trackpoint" with "speed", "sensitivity", and "press_to_select" if you'd like to test
+    if (QFile::exists("/tmp/pkf_trackpoint/speed")) // && geteuid()!=0)  // Make directory "/tmp/pkf_trackpoint" with "speed", "sensitivity", and "press_to_select" if you'd like to test
         settingPath = "/tmp/pkf_trackpoint";
     else if (QFile::exists("/sys/devices/platform/i8042/serio1/serio2/speed"))  // If trackpad exists
         settingPath = "/sys/devices/platform/i8042/serio1/serio2";
-    else if (QFile::exists("/sys/devices/platform/i8042/serio1/speed"))  // if trackpad does not exist
+    else if (QFile::exists("/sys/devices/platform/i8042/serio1/speed"))  // If trackpad does not exist
         settingPath = "/sys/devices/platform/i8042/serio1";
+    else if (QFile::exists("/sys/devices/rmi4-00/rmi4-00.fn03/serio2/speed"))  // If disto uses less common device directory (suc has KDE Neon)
+        settingPath = "/sys/devices/rmi4-00/rmi4-00.fn03/serio2";
     else
     {
         QMessageBox::critical(this, "Alert", "No TrackPoint detected!");
@@ -72,7 +127,7 @@ void MainWindow::setSettingsPath()
 
 void MainWindow::setPersistPaths()
 {
-    if (QFile::exists("/tmp/pkf_trackpoint/speed")) {  // Make directory "/tmp/pkf_trackpoint" with "speed" if you'd like to test
+    if (QFile::exists("/tmp/pkf_trackpoint/speed")) {  // Make directory "/tmp/pkf_trackpoint" with "speed", "sensitivity", and "press_to_select" if you'd like to test
         trackpointSHPath = "/tmp/pkf_trackpoint";
         initPath = "/tmp/pkf_trackpoint";
     }
@@ -85,8 +140,14 @@ void MainWindow::setPersistPaths()
         initPath = "N/A";
     }
 
+    if (QFile::exists(trackpointSHPath + "/trackpoint.sh"))
+        ui->check_Persist->setChecked(1);
+    else
+        ui->check_Persist->setChecked(0);
+
      qDebug() << "Will place trackpoint.sh in " << trackpointSHPath;
      qDebug() << "Will place initalization files in" << initPath;
+     qDebug() << "Persist check-box set to " << ui->check_Persist->checkState();
 }
 
 void MainWindow::applySettings(QString settingFile, QString settingValue)
@@ -103,10 +164,10 @@ void MainWindow::applySettings(QString settingFile, QString settingValue)
 
 void MainWindow::validateSettings()
 {
-    QValidator *validateSpeedSensativity = new QIntValidator(1,255,this);
+    QValidator *validateSpeedSensitivity = new QIntValidator(1,255,this);
     QValidator *validatePress_To_Select = new QIntValidator(0,1,this);
-    ui->edit_Speed->setValidator(validateSpeedSensativity);
-    ui->edit_Sensativity->setValidator(validateSpeedSensativity);
+    ui->edit_Speed->setValidator(validateSpeedSensitivity);
+    ui->edit_Sensitivity->setValidator(validateSpeedSensitivity);
     ui->edit_Press_To_Select->setValidator(validatePress_To_Select);
 }
 
@@ -119,12 +180,12 @@ void MainWindow::displaySettings()
     ui->label_Speed->setText(speedFile.readAll());
     speedFile.close();
 
-    QFile sensativityFile(settingPath + "/sensitivity");
-    if(!sensativityFile.open(QIODevice::ReadOnly)) {
-        QMessageBox::warning(0, "Warning", sensativityFile.errorString());
+    QFile sensitivityFile(settingPath + "/sensitivity");
+    if(!sensitivityFile.open(QIODevice::ReadOnly)) {
+        QMessageBox::warning(0, "Warning", sensitivityFile.errorString());
     }
-    ui->label_Sensitivity->setText(sensativityFile.readAll());
-    sensativityFile.close();
+    ui->label_Sensitivity->setText(sensitivityFile.readAll());
+    sensitivityFile.close();
 
     QFile press_to_selectFile(settingPath + "/press_to_select");
     if(!press_to_selectFile.open(QIODevice::ReadOnly)) {
@@ -150,7 +211,7 @@ void MainWindow::on_check_Persist_clicked()
 {
     if (ui->check_Persist->isChecked()){
         if (trackpointSHPath=="N/A") {
-            QMessageBox::critical(this, "Alert", "Initalization system not detected!");
+            QMessageBox::critical(this, "Alert", "Initialization system not detected!");
             ui->check_Persist->setChecked(0);
         }
          else {
@@ -166,21 +227,35 @@ void MainWindow::on_check_Persist_clicked()
 
     if (!ui->check_Persist->isChecked()){
         if (trackpointSHPath=="N/A")
-            qDebug() << "No initalizatoin system detected so no change made by unchecking";
+            qDebug() << "No initalization system detected so no change made by unchecking";
         else {
             QProcess::execute(initCommand + " disable trackpoint.timer");
             QProcess::execute(initCommand + " stop trackpoint");
 
             QFile trackpointSH(trackpointSHPath + "/trackpoint.sh");
             trackpointSH.remove();
-            QFile trackpointService(trackpointSHPath + "/trackpoint.service");
+            QFile trackpointService(initPath + "/trackpoint.service");
             trackpointService.remove();
-            QFile trackpointTimer(trackpointSHPath + "/trackpoint.timer");
+            QFile trackpointTimer(initPath + "/trackpoint.timer");
             trackpointTimer.remove();
 
             QProcess::execute(initCommand + " daemon-reload");
+
+            // Reset TrackPoint settings to "current" values (stopping trackpoint.sh sets values to default)
+            applySettings(settingPath + "/speed", ui->label_Speed->text());
+            applySettings(settingPath + "/sensitivity", ui->label_Sensitivity->text());
+            applySettings(settingPath + "/press_to_select", ui->label_PressToSelect->text());
         }
     }
+    displaySettings();
+}
+
+void MainWindow::on_actionToggle_Test_Mode_triggered()
+{
+    if (QFile::exists(testPath + "/speed"))
+        setTestMode(0);
+    else
+        setTestMode(1);
 }
 
 void MainWindow::installTrackpointSH()
@@ -190,12 +265,9 @@ void MainWindow::installTrackpointSH()
     QTextStream stream(&trackpointSH);
     stream << "#!/bin/bash\n\n";
     stream << "## Determine and set correct path for trackpoint\n";
-    stream << "if [ -f /sys/devices/platform/i8042/serio1/serio2/sensitivity ];\n";
+    stream << "if [ -f " << settingPath << "/speed ];\n";
     stream << "then\n";
-    stream << "  vTrackpointPath=/sys/devices/platform/i8042/serio1/serio2\n";
-    stream << "elif [ -f /sys/devices/platform/i8042/serio1/sensitivity ];\n";
-    stream << "then\n";
-    stream << "  vTrackpointPath=/sys/devices/platform/i8042/serio1\n";
+    stream << " vTrackpointPath=" << settingPath << "\n";
     stream << "else\n";
     stream << "  echo \"Trackpoint not detected\"\n";
     stream << "  exit 200\n";
@@ -206,20 +278,21 @@ void MainWindow::installTrackpointSH()
     stream << "vPress_to_Select=" << ui->label_PressToSelect->text() << "\n\n";
     stream << "### Apply settings based on option \"start\" or \"stop\" being passed\n";
     stream << "case $1 in\n";
-    stream << "  [Ss]tart )/n";
-    stream << "    echo -n \"$vSensitivity > $vTrackpointPath/sensativity\n";
-    stream << "    echo -n \"$vSpeed > $vTrackpointPath/speed\n";
-    stream << "    echo -n \"$vPress_to_Select > $vTrackpointPath/press_to_select\n";
+    stream << "  [Ss]tart )\n";
+    stream << "    echo -n $vSensitivity > $vTrackpointPath/sensitivity\n";
+    stream << "    echo -n $vSpeed > $vTrackpointPath/speed\n";
+    stream << "    echo -n $vPress_to_Select > $vTrackpointPath/press_to_select\n";
     stream << "  ;;\n\n";
     stream << "  [Ss]top )\n";
     stream << "    echo 128 > $vTrackpointPath/sensitivity\n";
     stream << "    echo 97 > $vTrackpointPath/speed\n";
-    stream << "    echo 0 > $vTrackpointPath/press_to_select";
+    stream << "    echo 0 > $vTrackpointPath/press_to_select\n";
     stream << "  ;;\n\n";
     stream << "  * )\n";
-    stream << "    echo \"Usage: {start|stop}\n";
+    stream << "    echo \"Usage: {start|stop}\"\n";
     stream << "esac";
     trackpointSH.close();
+    trackpointSH.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner | QFileDevice::ReadGroup | QFileDevice::ReadOther);
 }
 
 void MainWindow::installTrackpointService()
@@ -229,14 +302,13 @@ void MainWindow::installTrackpointService()
     QTextStream stream(&trackpointService);
     stream << "[Unit]\n";
     stream << "Description=Trackpoint Configuration for systemd\n";
-    stream << "## Only using \"sensitivity\" file as also using \"speed\" and \"press_to_select\" would be redundant\n";
-    stream << "ConditionPathExists=|/sys/devices/platform/i8042/serio1/serio2/sensitivity\n";
-    stream << "ConditionPathExists=|/sys/devices/platform/i8042/serio1/sensitivity\n\n";
+    stream << "## Only using \"speed\" file as also using \"sensitivity\" and \"press_to_select\" would be redundant\n";
+    stream << "ConditionPathExists=" << settingPath << "/speed\n\n";
     stream << "[Service]\n";
     stream << "Type=oneshot\n";
     stream << "RemainAfterExit=yes\n";
-    stream << "ExecStart=/usr/bin/trackpoint.sh start\n";
-    stream << "ExecStop=/usr/bin/trackpoint.sh stop\n\n";
+    stream << "ExecStart=" << trackpointSHPath << "/trackpoint.sh start\n";
+    stream << "ExecStop=" << trackpointSHPath << "/trackpoint.sh stop\n\n";
     stream << "[Install]\n";
     stream << "WantedBy=graphical.target";
     trackpointService.close();
