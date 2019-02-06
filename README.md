@@ -20,7 +20,6 @@ This program will allows you to change the speed, sensitivity, and press_to_sele
 ## Limitations
 All Limitations will be addressed in future versions
 - Persistence currently only works for systemd
-- Only detects common TrackPoint directories (i.e., "/sys/device/platform/i8042...").  Some GNU/Linux distributions (such as KDE Neon) use a less common directory.
 
 ### Disclaimer...
 This program was written by a novice who is just learing C++ and Qt.  As such, the author is aware that there is much room for improvement in the code and appreciates any suggestions for cleaning it up or making it more efficient.  The author can be reached at "afogl001@members.fsf.org".    
