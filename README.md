@@ -22,7 +22,7 @@ All Limitations will be addressed in future versions
 - Persistence currently only works for systemd
 
 ### Disclaimer...
-This program was written by a novice who is just learing C++ and Qt.  As such, the author is aware that there is much room for improvement in the code and appreciates any suggestions for cleaning it up or making it more efficient.  The author can be reached at "afogl001@members.fsf.org".    
+This program was written by a novice who is just learning C++ and Qt.  As such, the author is aware that there is much room for improvement in the code and appreciates any suggestions for cleaning it up or making it more efficient.  The author can be reached at "afogl001@members.fsf.org".    
 
 ### Planned Improvements
 - Fix minor offset of labels
@@ -42,10 +42,10 @@ This program was written by a novice who is just learing C++ and Qt.  As such, t
 ### **Code overview**
 #### Functions
 + setSettingsPath() = Sets path for TrackPoint settings (aka, speed, sensitivity, and press_to_select)
-  - Runs conditional to determine correct TrackPoint settings path (starst with default value of  *testPath*)
+  - Runs conditional to determine correct TrackPoint settings path (starts with default value of  *testPath*)
   - If no paths match those tested, exit with failure and critical alert to user
 + applySettings(QString settingsFile, QString settingsValue) = Applies any specified TrackPoint setting
-  - If *settingsValue* not NULL, applys that value to the *settingsFile*
+  - If *settingsValue* not NULL, applies that value to the *settingsFile*
 + validateSettings() = Configure validators for text edit boxes
   - Create QValidators for values "1-255" and "0-1"
   - Set speed and sensitivity edit texts boxes with "1-255" validator
@@ -140,7 +140,7 @@ The main loop will...
   - If effective user is root, sets initialization command to actual command (i.e., "systemctl" for systemd)
   -  If effective user is anyone other than root, sets initialization command with prefixed "echo" (i.e., "echo systemctl" for systemd) and displays text in Info label for the user to run as root or with sudo to make changes.
 1. Set validators for the text input fields by running "validateSettings" which will...
-  - Set the input text boxes for speed and sensitivity only accept values 1-255 (though user still permited to enter "0")
+  - Set the input text boxes for speed and sensitivity only accept values 1-255 (though user still permitted to enter "0")
   - Set the input text box for press_to_select to only accept values 0-1
 1. Display the current TrackPoint settings by running "displaySettings", which will...
   - Read TrackPoint configuration settings and print them to the appropriate labels.

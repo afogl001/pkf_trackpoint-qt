@@ -12,6 +12,7 @@
 #include <QProcess>
 
 #include <unistd.h>  // For "getuid" and "geteuid"
+#include <QIntValidator>  // Added since QIntValidator was moved to it's own header
 
 namespace Ui {
 class MainWindow;
