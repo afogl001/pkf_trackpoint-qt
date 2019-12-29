@@ -42,8 +42,8 @@ This program was written by a novice who is just learning C++ and Qt.  As such, 
 ### **Code overview**
 #### Functions
 + setSettingsPath() = Sets path for TrackPoint settings (aka, speed, sensitivity, and press_to_select)
-  - Runs conditional to determine correct TrackPoint settings path (starts with default value of  *testPath*)
-  - If no paths match those tested, exit with failure and critical alert to user
+  - Runs directory iterator loop to determine correct TrackPoint settings path (starts with default value of  *testPath*)
+  - If no paths match those tested, show alert window and run **setTestMode** with "1", putting the user in "Test" mode.
 + applySettings(QString settingsFile, QString settingsValue) = Applies any specified TrackPoint setting
   - If *settingsValue* not NULL, applies that value to the *settingsFile*
 + validateSettings() = Configure validators for text edit boxes
@@ -124,7 +124,6 @@ This program was written by a novice who is just learning C++ and Qt.  As such, 
   - "0" = off
   - "1" = on
   - "3" = cleanup during application shutdown (similar to "0" but does not run other functions)
-
 
 #### Process Flow
 The main loop will...

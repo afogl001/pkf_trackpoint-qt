@@ -108,21 +108,28 @@ void MainWindow::on_button_Apply_clicked()
 
 void MainWindow::setSettingsPath()
 {
-    if (QFile::exists("/tmp/pkf_trackpoint/speed")) // && geteuid()!=0)  // Make directory "/tmp/pkf_trackpoint" with "speed", "sensitivity", and "press_to_select" if you'd like to test
-        settingPath = "/tmp/pkf_trackpoint";
-    else if (QFile::exists("/sys/devices/platform/i8042/serio1/serio2/speed"))  // If trackpad exists
-        settingPath = "/sys/devices/platform/i8042/serio1/serio2";
-    else if (QFile::exists("/sys/devices/platform/i8042/serio1/speed"))  // If trackpad does not exist
-        settingPath = "/sys/devices/platform/i8042/serio1";
-    else if (QFile::exists("/sys/devices/rmi4-00/rmi4-00.fn03/serio2/speed"))  // If disto uses less common device directory (suc has KDE Neon)
-        settingPath = "/sys/devices/rmi4-00/rmi4-00.fn03/serio2";
-    else
-    {
-        QMessageBox::critical(this, "Alert", "No TrackPoint detected!");
-        exit(EXIT_FAILURE);
-    }
+  QStringList dirList;  // Declare list for directories to search
+  dirList << "/sys/devices/" << "/tmp/";  // Specify directories to search
 
-    qDebug() << "Using trackpoint settings at " << settingPath;
+  foreach (QString element, dirList) {
+   QDirIterator file_check(element, QStringList() << "press_to_select", QDir::NoFilter, QDirIterator::Subdirectories);
+   while (file_check.hasNext()) {  // Search recursivly for "press_to_select"
+       qDebug() << "Found " << file_check.next();  // For some reason, this is needed or eles the infinite loop
+       QString fileLocation = file_check.fileInfo().path();  // Assign directory containing "press_to_selectd" to variable
+       QFileInfo fileInfoSpeed(fileLocation+"/speed");  // Set object for "speed" file
+       QFileInfo fileInfoSensitivity(fileLocation+"/sensitivity");  // Set object for "sensitivity" file
+       if (fileInfoSpeed.exists()) {  // If "speed" file exist...
+          if (fileInfoSensitivity.exists())  { // and "sensitivity" file exist...
+              settingPath = fileLocation;  // set the discovered path to "settingPath"
+              qDebug() << "Using trackpoint settings at: " << settingPath;
+          } else {
+              QMessageBox::warning(this, "Alert", "No TrackPoint detected!");
+              setTestMode(1);
+              }
+       }
+
+   }
+  }
 }
 
 void MainWindow::setPersistPaths()

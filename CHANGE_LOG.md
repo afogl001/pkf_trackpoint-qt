@@ -1,4 +1,11 @@
-# **v1.1**
+# **v1.2**
+## v1.2.0
+  - Features
+    + Add dynamic discovery of TrackPoint settings path
+    + Add condition if TrackPoint not discovered, open in "Test" mode
+  - Other
+    + Clean up some conditionals with explicit brackets
+# v1.1
 ## v1.1.0
   - Features
     + Add support for KDE Neon
