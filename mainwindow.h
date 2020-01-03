@@ -37,6 +37,7 @@ public:
     void setPersistPaths();
     void checkMode();
     void setTestMode(int testMode);
+    void checkDeviceMgr();
 
 private slots:
     void on_button_Apply_clicked();
@@ -47,6 +48,8 @@ private slots:
 
     void on_actionToggle_Test_Mode_triggered();
 
+    void on_check_Scrolling_stateChanged(int arg1);
+
 private:
     Ui::MainWindow *ui;
     QString settingPath;
@@ -54,7 +57,13 @@ private:
     QString initPath;
     QString initCommand;
     QString testPath;
+    QString testXorgPath;
     int testStatus;
+    QString xorgLocation;
+    QString xinputCommand;
+    QStringList xinputArgs;
+    QProcess runXinput;
+    int runMode;
 };
 
 #endif // MAINWINDOW_H

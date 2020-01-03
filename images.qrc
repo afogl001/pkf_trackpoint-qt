@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/">
+        <file>pkf_trackpoint.png</file>
+    </qresource>
+</RCC>

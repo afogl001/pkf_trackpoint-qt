@@ -7,6 +7,7 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
+    checkDeviceMgr();
     setSettingsPath();
     setPersistPaths();
     checkMode();
@@ -20,6 +21,43 @@ MainWindow::~MainWindow()
     setTestMode(3);
 }
 
+void MainWindow::checkDeviceMgr()
+{
+    QProcess eventDevice;
+    QString exec = "xinput";
+    QStringList params;
+     params << "list-props" << "TPPS/2 IBM TrackPoint";
+
+    eventDevice.start(exec, params);
+    eventDevice.waitForFinished(); // sets current thread to sleep and waits for process to end
+    QString output(eventDevice.readAllStandardOutput());
+    qDebug() << "Using Evdev: " << output.contains("Evdev");
+    if (output.contains("Evdev")) {
+       ui->check_Scrolling->setVisible(true);
+       // Determine and set correct path for X11 xorg.conf.d
+       QStringList xOrgDirList;  // Declare list for directories to search
+       xOrgDirList << "/tmp" <<  "/usr" << "/etc";  // Specify directories to search
+       bool fileFound = false;
+
+       foreach (QString element, xOrgDirList) {
+        QDirIterator xorg_check(element, QStringList() << "xorg.conf.d", QDir::NoFilter, QDirIterator::Subdirectories);
+        while (xorg_check.hasNext() && fileFound == false) {  // Search recursivly for "xorg.conf.d"
+            qDebug() << "Checking for xorg.conf.d, found: " << xorg_check.next();  // For some reason, this is needed or eles the infinite loop
+            xorgLocation = xorg_check.fileInfo().absoluteFilePath();  // Assign "xorg.conf.d" directory to variable
+            qDebug() << "Using xorg.conf.d directory: " << xorgLocation;
+
+            QFileInfo fileInfoXorg(xorgLocation+"/90-trackpoint.conf");  // Set object for "90-trackpoint.conf" file
+            qDebug() << "Scrolling file: " << fileInfoXorg.exists();
+            if (fileInfoXorg.exists()) {  // If "90-trackpoint.conf"...
+                ui->check_Scrolling->setChecked(1);
+                fileFound = true;
+           }
+            else ui->check_Scrolling->setChecked(0);
+        }
+       }
+    }
+}
+
 void MainWindow::checkMode()
 {
         auto effectiveUser = geteuid();
@@ -27,14 +65,17 @@ void MainWindow::checkMode()
         if (effectiveUser == 0 && testStatus!=1) {
             initCommand = "systemctl";
             ui->label_Info->setText("");
+            runMode=0;
         }
         else if (testStatus==1) {
             initCommand = "echo systemctl";
             ui->label_Info->setText("Running in \"Test\" Mode");
+            runMode=1;
         }
         else {
             initCommand = "echo systemctl";
             ui->label_Info->setText("Running in \"ReadOnly\" Mode:  Run with \"sudo\" or as root to change to TrackPoint settings");
+            runMode=2;
         }
         qDebug() << "Effective User = " << effectiveUser;
         qDebug() << "initCommand = " << initCommand;
@@ -49,6 +90,10 @@ void MainWindow::setTestMode(int testMode)
     if (testMode==1) {
         qDebug() << "Test path = " << testPath;
         dir.mkdir(testPath);
+        QProcess::execute("mkdir " + testPath + "/xorg.conf.d");
+        QProcess::execute("touch " + testPath + "/xorg.conf.d/90-trackpoint.conf");
+        xinputCommand = "echo xinput set-prop \"TPPS/2 IBM TrackPoint\"";
+        qDebug() << "Test xorg command = " << xinputCommand;
 
         QFile testSpeed(testPath + "/speed");
         testSpeed.open(QIODevice::WriteOnly | QIODevice::Truncate);
@@ -72,15 +117,19 @@ void MainWindow::setTestMode(int testMode)
         setPersistPaths();
         displaySettings();
         checkMode();
+        checkDeviceMgr();
     }
     else if (testMode==0) {
         qDebug() << "Removong " << testPath;
         dir.removeRecursively();
+        xinputCommand = "xinput set-prop \"TPPS/2 IBM TrackPoint\"";
+        qDebug() << "Xorg command = " << xinputCommand;
 
         setSettingsPath();
         setPersistPaths();
         displaySettings();
         checkMode();
+        checkDeviceMgr();
     }
     else if (testMode==3) {
         qDebug() << "Removong " << testPath << " if it exists";
@@ -114,14 +163,14 @@ void MainWindow::setSettingsPath()
   foreach (QString element, dirList) {
    QDirIterator file_check(element, QStringList() << "press_to_select", QDir::NoFilter, QDirIterator::Subdirectories);
    while (file_check.hasNext()) {  // Search recursivly for "press_to_select"
-       qDebug() << "Found " << file_check.next();  // For some reason, this is needed or eles the infinite loop
+       qDebug() << "Checking for TrackPoint settings, found:  " << file_check.next();  // For some reason, this is needed or eles the infinite loop
        QString fileLocation = file_check.fileInfo().path();  // Assign directory containing "press_to_selectd" to variable
        QFileInfo fileInfoSpeed(fileLocation+"/speed");  // Set object for "speed" file
        QFileInfo fileInfoSensitivity(fileLocation+"/sensitivity");  // Set object for "sensitivity" file
        if (fileInfoSpeed.exists()) {  // If "speed" file exist...
           if (fileInfoSensitivity.exists())  { // and "sensitivity" file exist...
               settingPath = fileLocation;  // set the discovered path to "settingPath"
-              qDebug() << "Using trackpoint settings at: " << settingPath;
+              qDebug() << "Using TrackPoint settings at: " << settingPath;
           } else {
               QMessageBox::warning(this, "Alert", "No TrackPoint detected!");
               setTestMode(1);
@@ -334,4 +383,42 @@ void MainWindow::installTrackpointTimer()
     stream << "[Install]\n";
     stream << "WantedBy=timers.target";
     trackpointTimer.close();
+}
+
+void MainWindow::on_check_Scrolling_stateChanged(int arg1)
+{
+    QFile trackpointEvdevConf(xorgLocation + "/90-trackpoint.conf");
+    if (ui->check_Scrolling->isChecked()) {
+        qDebug() << "check_Scrolling: Checked";
+        QProcess::execute(xinputCommand + " \"Evdev Wheel Emulation\" 1");
+        QProcess::execute(xinputCommand + " \"Evdev Wheel Emulation Button\" 2");
+        QProcess::execute(xinputCommand + " \"Evdev Wheel Emulation Axes\" 6 7 4 5");
+
+        if (runMode < 2) {
+            trackpointEvdevConf.open(QIODevice::WriteOnly | QIODevice::Truncate);
+            QTextStream stream(&trackpointEvdevConf);
+            stream << "Section InputClass\n";
+            stream << "\tIdentifier\t\"trackpoint catchall\"\n";
+            stream << "\tMatchIsPointer\t\"true\"\n";
+            stream << "\tMatchProduct\t\"TrackPoint|DualPoint Stick\"\n";
+            stream << "\tMatchDevicePath\t\"/dev/input/event*\"\n";
+            stream << "\tOption\t\"Emulate3Buttons\"\t\"true\"\n";
+            stream << "\tOption\t\"EmulateWheel\"\t\"1\"\n";
+            stream << "\tOption\t\"EmulateWheelButton\"\t\"2\"\n";
+            stream << "\tOption\t\"XAxisMapping\"\t\"6 7\"\n";
+            stream << "\tOption\t\"YAxisMapping\"\t\"4 5\"\n";
+            stream << "EndSection";
+            trackpointEvdevConf.close();
+        }
+    }
+    else if (!ui->check_Scrolling->isChecked()) {
+        qDebug() << "check_Scroling: Un-checked";
+        QProcess::execute(xinputCommand + " \"Evdev Wheel Emulation\" 0");
+        QProcess::execute(xinputCommand + " \"Evdev Wheel Emulation Button\" 3");
+        QProcess::execute(xinputCommand + " \"Evdev Wheel Emulation Axes\" 0 0 4 5");
+
+        if (runMode < 2) {
+            trackpointEvdevConf.remove();
+        }
+    }
 }
