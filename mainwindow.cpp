@@ -56,6 +56,7 @@ void MainWindow::checkDeviceMgr()
         }
        }
     }
+    else ui->check_Scrolling->setVisible(false);
 }
 
 void MainWindow::checkMode()
@@ -64,21 +65,25 @@ void MainWindow::checkMode()
 
         if (effectiveUser == 0 && testStatus!=1) {
             initCommand = "systemctl";
+            xinputCommand = "xinput";
             ui->label_Info->setText("");
             runMode=0;
         }
         else if (testStatus==1) {
             initCommand = "echo systemctl";
+            xinputCommand = "echo xinput";
             ui->label_Info->setText("Running in \"Test\" Mode");
             runMode=1;
         }
         else {
             initCommand = "echo systemctl";
+            xinputCommand = "echo xinput";
             ui->label_Info->setText("Running in \"ReadOnly\" Mode:  Run with \"sudo\" or as root to change to TrackPoint settings");
             runMode=2;
         }
         qDebug() << "Effective User = " << effectiveUser;
         qDebug() << "initCommand = " << initCommand;
+        qDebug() << "xinputCommand = " << xinputCommand;
 }
 
 void MainWindow::setTestMode(int testMode)
@@ -92,8 +97,6 @@ void MainWindow::setTestMode(int testMode)
         dir.mkdir(testPath);
         QProcess::execute("mkdir " + testPath + "/xorg.conf.d");
         QProcess::execute("touch " + testPath + "/xorg.conf.d/90-trackpoint.conf");
-        xinputCommand = "echo xinput set-prop \"TPPS/2 IBM TrackPoint\"";
-        qDebug() << "Test xorg command = " << xinputCommand;
 
         QFile testSpeed(testPath + "/speed");
         testSpeed.open(QIODevice::WriteOnly | QIODevice::Truncate);
@@ -122,8 +125,6 @@ void MainWindow::setTestMode(int testMode)
     else if (testMode==0) {
         qDebug() << "Removong " << testPath;
         dir.removeRecursively();
-        xinputCommand = "xinput set-prop \"TPPS/2 IBM TrackPoint\"";
-        qDebug() << "Xorg command = " << xinputCommand;
 
         setSettingsPath();
         setPersistPaths();
@@ -187,7 +188,7 @@ void MainWindow::setPersistPaths()
         trackpointSHPath = "/tmp/pkf_trackpoint";
         initPath = "/tmp/pkf_trackpoint";
     }
-    else if (QFile::exists("/etc/systemd/system")) { // If trackpad exists
+    else if (QFile::exists("/etc/systemd/system")) { // If distro using systemd
         trackpointSHPath = "/usr/bin";
         initPath = "/etc/systemd/system";
     }
@@ -388,16 +389,23 @@ void MainWindow::installTrackpointTimer()
 void MainWindow::on_check_Scrolling_stateChanged(int arg1)
 {
     QFile trackpointEvdevConf(xorgLocation + "/90-trackpoint.conf");
+
+    QProcess runXinput;
+    QStringList wheelEmuArgs;
+    QStringList wheelButtonArgs;
+    QStringList wheelAxisArgs;
+
+
     if (ui->check_Scrolling->isChecked()) {
         qDebug() << "check_Scrolling: Checked";
-        QProcess::execute(xinputCommand + " \"Evdev Wheel Emulation\" 1");
-        QProcess::execute(xinputCommand + " \"Evdev Wheel Emulation Button\" 2");
-        QProcess::execute(xinputCommand + " \"Evdev Wheel Emulation Axes\" 6 7 4 5");
+        wheelEmuArgs<< "set-prop" << "TPPS/2 IBM TrackPoint" << "Evdev Wheel Emulation" << "1";
+        wheelButtonArgs<< "set-prop" << "TPPS/2 IBM TrackPoint" << "Evdev Wheel Emulation Button" << "2";
+        wheelAxisArgs<< "set-prop" << "TPPS/2 IBM TrackPoint" << "Evdev Wheel Emulation Axes" << "6 7 4 5";
 
         if (runMode < 2) {
             trackpointEvdevConf.open(QIODevice::WriteOnly | QIODevice::Truncate);
             QTextStream stream(&trackpointEvdevConf);
-            stream << "Section InputClass\n";
+            stream << "Section \"InputClass\"\n";
             stream << "\tIdentifier\t\"trackpoint catchall\"\n";
             stream << "\tMatchIsPointer\t\"true\"\n";
             stream << "\tMatchProduct\t\"TrackPoint|DualPoint Stick\"\n";
@@ -413,12 +421,19 @@ void MainWindow::on_check_Scrolling_stateChanged(int arg1)
     }
     else if (!ui->check_Scrolling->isChecked()) {
         qDebug() << "check_Scroling: Un-checked";
-        QProcess::execute(xinputCommand + " \"Evdev Wheel Emulation\" 0");
-        QProcess::execute(xinputCommand + " \"Evdev Wheel Emulation Button\" 3");
-        QProcess::execute(xinputCommand + " \"Evdev Wheel Emulation Axes\" 0 0 4 5");
+        wheelEmuArgs<< "set-prop" << "TPPS/2 IBM TrackPoint" << "Evdev Wheel Emulation" << "0";
+        wheelButtonArgs<< "set-prop" << "TPPS/2 IBM TrackPoint" << "Evdev Wheel Emulation Button" << "3";
+        wheelAxisArgs<< "set-prop" << "TPPS/2 IBM TrackPoint" << "Evdev Wheel Emulation Axes" << "0 0 4 5";
 
         if (runMode < 2) {
             trackpointEvdevConf.remove();
         }
     }
+
+    runXinput.start(xinputCommand, wheelEmuArgs);
+    runXinput.waitForFinished(); // sets current thread to sleep and waits for process to end
+    runXinput.start(xinputCommand, wheelButtonArgs);
+    runXinput.waitForFinished(); // sets current thread to sleep and waits for process to end
+    runXinput.start(xinputCommand, wheelAxisArgs);
+    runXinput.waitForFinished(); // sets current thread to sleep and waits for process to end
 }

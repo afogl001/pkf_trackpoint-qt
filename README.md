@@ -25,8 +25,8 @@ All Limitations will be addressed in future versions
 This program was written by a novice who is just learning C++ and Qt.  As such, the author is aware that there is much room for improvement in the code and appreciates any suggestions for cleaning it up or making it more efficient.  The author can be reached at "afogl001@members.fsf.org".    
 
 ### Planned Improvements
+- Allow Evdev users to choose wither to initiate scrolling 
 - Fix minor offset of labels
-- Change hardcoded testpath in **setSettingsPath()**/**setPersistPaths()** to dynamic assignment
 - Do now allow user to un-check persist if not root
 - Add initd support for persistence
 - Allow user to run and prompt for escalated privileges

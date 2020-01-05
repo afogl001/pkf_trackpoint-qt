@@ -61,8 +61,6 @@ private:
     int testStatus;
     QString xorgLocation;
     QString xinputCommand;
-    QStringList xinputArgs;
-    QProcess runXinput;
     int runMode;
 };
 
