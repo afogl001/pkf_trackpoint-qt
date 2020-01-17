@@ -1,4 +1,7 @@
 # **v2.0**
+## v2.0.1
+  - Other
+    + Corrections to README and acknowledgments to very important resources.
 ## v2.0.0
   - Features
     + Add "Enable scrolling" for distros using "Evdev" device manager
